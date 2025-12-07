@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blender Video Sync</title>
+    <title>Blender Video Sync with Voice Chat</title>
     <style>
         * {
             margin: 0;
@@ -190,19 +190,20 @@
             transform: translateY(-50%) scale(1.4);
         }
         
-        /* Status Panel */
-        .status-panel {
+        /* Voice Chat Panel */
+        .voice-panel {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 10px;
-            padding: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 15px;
+            padding: 20px;
             z-index: 10;
             display: none;
-            min-width: 200px;
+            min-width: 250px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
         
         .room-code-display {
@@ -213,26 +214,137 @@
             text-align: center;
             font-size: 1.2rem;
             letter-spacing: 3px;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             font-family: monospace;
         }
         
-        .user-count {
+        /* Voice Controls */
+        .voice-controls {
             display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #4CAF50;
-            margin-bottom: 15px;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
         }
         
-        .user-icon {
-            width: 30px;
-            height: 30px;
-            background: rgba(76, 175, 80, 0.2);
+        .mic-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .mic-control:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        
+        .mic-icon {
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
+            background: rgba(76, 175, 80, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .mic-control.muted .mic-icon {
+            background: rgba(244, 67, 54, 0.2);
+        }
+        
+        .mic-status {
+            flex: 1;
+        }
+        
+        .mic-status div:first-child {
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+        
+        .mic-status div:last-child {
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+        
+        .volume-slider {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 5px;
+            position: relative;
+        }
+        
+        .volume-level {
+            height: 100%;
+            width: 70%;
+            background: linear-gradient(to right, #00b4db, #0083b0);
+            border-radius: 3px;
+        }
+        
+        /* User List */
+        .users-title {
+            color: #aaa;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .user-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .user-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .user-info {
+            flex: 1;
+        }
+        
+        .user-name {
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+        
+        .user-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+        
+        .talking-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 1.5s infinite;
         }
         
         /* Connection Status */
@@ -292,22 +404,6 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                bottom: 10px;
-            }
-            to {
-                opacity: 1;
-                bottom: 30px;
-            }
-        }
-        
         /* Back Button */
         .back-button {
             position: fixed;
@@ -327,20 +423,62 @@
         .back-button:hover {
             background: rgba(255, 255, 255, 0.2);
         }
+        
+        /* Audio Visualization */
+        .audio-visualizer {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            z-index: 10;
+            display: none;
+        }
+        
+        .audio-bar {
+            width: 4px;
+            height: 20px;
+            background: #00b4db;
+            border-radius: 2px;
+            transition: height 0.1s;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                bottom: 10px;
+            }
+            to {
+                opacity: 1;
+                bottom: 30px;
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
     <!-- Main Menu Screen -->
     <div class="screen" id="mainMenu">
         <h1 class="title">🎬 Blender Sync</h1>
-        <p class="subtitle">Watch Blender animations in perfect sync with a friend</p>
+        <p class="subtitle">Watch videos & voice chat with friends in real-time</p>
         
         <div class="room-section">
             <div class="room-option" onclick="showCreateRoom()">
                 <div class="option-icon">🎥</div>
                 <div class="option-text">
                     <div class="option-title">Create Room</div>
-                    <div class="option-desc">Start a new session and invite a friend</div>
+                    <div class="option-desc">Start a new session with voice chat</div>
                 </div>
             </div>
             
@@ -357,7 +495,7 @@
     <!-- Create Room Screen -->
     <div class="screen" id="createRoomScreen" style="display: none;">
         <h1 class="title">Create Room</h1>
-        <p class="subtitle">Create a private room for you and a friend</p>
+        <p class="subtitle">Create a private room with voice chat</p>
         
         <div class="room-input-section" style="display: block;">
             <div class="input-label">Your room code will be generated automatically</div>
@@ -386,17 +524,47 @@
         <div class="secret-dot" id="secretDot" onclick="changeVideo()"></div>
     </div>
     
-    <!-- Status Panel -->
-    <div class="status-panel" id="statusPanel">
+    <!-- Voice Chat Panel -->
+    <div class="voice-panel" id="voicePanel">
         <div class="room-code-display" id="currentRoomCode">----</div>
-        <div class="user-count">
-            <div class="user-icon">👤</div>
-            <div><span id="userCount">1</span> / 2 users</div>
+        
+        <div class="voice-controls">
+            <div class="mic-control" id="micControl" onclick="toggleMicrophone()">
+                <div class="mic-icon">🎤</div>
+                <div class="mic-status">
+                    <div>Microphone</div>
+                    <div id="micStatusText">Click to enable</div>
+                </div>
+            </div>
+            
+            <div>
+                <div style="margin-bottom: 5px; color: #aaa; font-size: 0.9rem;">Volume</div>
+                <div class="volume-slider" onclick="adjustVolume(event)">
+                    <div class="volume-level" id="volumeLevel"></div>
+                </div>
+            </div>
         </div>
-        <div style="color: #aaa; font-size: 0.9rem;">
-            Click dot to change video<br>
-            Space bar also works
+        
+        <div class="users-title">
+            <span>👥</span>
+            <span>Users in Room (<span id="userCount">1</span>)</span>
         </div>
+        
+        <div class="user-list" id="userList">
+            <!-- Users will be added here -->
+        </div>
+    </div>
+    
+    <!-- Audio Visualizer -->
+    <div class="audio-visualizer" id="audioVisualizer">
+        <div class="audio-bar"></div>
+        <div class="audio-bar"></div>
+        <div class="audio-bar"></div>
+        <div class="audio-bar"></div>
+        <div class="audio-bar"></div>
+        <div class="audio-bar"></div>
+        <div class="audio-bar"></div>
+        <div class="audio-bar"></div>
     </div>
     
     <!-- Connection Status -->
@@ -405,7 +573,7 @@
     </div>
     
     <!-- Back Button -->
-    <button class="back-button" id="backButton" onclick="goBack()">← Back</button>
+    <button class="back-button" id="backButton" onclick="goBack()">← Back to Menu</button>
     
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
@@ -421,7 +589,24 @@
         let currentRoom = null;
         let isHost = false;
         let currentVideoIndex = 0;
-        let partnerConnected = false;
+        let microphoneEnabled = false;
+        let localStream = null;
+        let audioContext = null;
+        let analyser = null;
+        let volume = 0.7;
+        
+        // User data
+        let users = [
+            { id: 'you', name: 'You', isTalking: false, isYou: true }
+        ];
+        
+        // Simulated partner (for demo)
+        let partner = { 
+            id: 'partner', 
+            name: 'Friend', 
+            isTalking: false, 
+            isYou: false 
+        };
         
         // DOM Elements
         const mainMenu = document.getElementById('mainMenu');
@@ -430,7 +615,7 @@
         const videoScreen = document.getElementById('videoScreen');
         const videoPlayer = document.getElementById('videoPlayer');
         const secretDot = document.getElementById('secretDot');
-        const statusPanel = document.getElementById('statusPanel');
+        const voicePanel = document.getElementById('voicePanel');
         const connectionStatus = document.getElementById('connectionStatus');
         const backButton = document.getElementById('backButton');
         const loadingOverlay = document.getElementById('loadingOverlay');
@@ -440,7 +625,12 @@
         const joinCodeInput = document.getElementById('joinCodeInput');
         const currentRoomCode = document.getElementById('currentRoomCode');
         const userCount = document.getElementById('userCount');
+        const userList = document.getElementById('userList');
         const statusText = document.getElementById('statusText');
+        const micControl = document.getElementById('micControl');
+        const micStatusText = document.getElementById('micStatusText');
+        const volumeLevel = document.getElementById('volumeLevel');
+        const audioVisualizer = document.getElementById('audioVisualizer');
         
         // Video Playlist - CHANGE THESE TO YOUR VIDEOS
         const videos = [
@@ -476,12 +666,133 @@
         
         // Generate room code
         function generateRoomCode() {
-            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Remove confusing characters
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
             let code = '';
             for (let i = 0; i < 4; i++) {
                 code += chars.charAt(Math.floor(Math.random() * chars.length));
             }
             return code;
+        }
+        
+        // Update user list display
+        function updateUserList() {
+            userList.innerHTML = '';
+            users.forEach(user => {
+                const userDiv = document.createElement('div');
+                userDiv.className = 'user-item';
+                userDiv.innerHTML = `
+                    <div class="user-avatar">${user.name.charAt(0)}</div>
+                    <div class="user-info">
+                        <div class="user-name">${user.name}${user.isYou ? ' (You)' : ''}</div>
+                        <div class="user-status">
+                            ${user.isTalking ? '<div class="talking-indicator"></div><span>Talking now</span>' : '<span>Silent</span>'}
+                        </div>
+                    </div>
+                `;
+                userList.appendChild(userDiv);
+            });
+            userCount.textContent = users.length;
+        }
+        
+        // Toggle microphone
+        async function toggleMicrophone() {
+            try {
+                if (!microphoneEnabled) {
+                    // Request microphone access
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        audio: true,
+                        video: false
+                    });
+                    
+                    microphoneEnabled = true;
+                    micControl.classList.remove('muted');
+                    micStatusText.textContent = 'Microphone active';
+                    
+                    // Show audio visualizer
+                    audioVisualizer.style.display = 'flex';
+                    setupAudioVisualizer(localStream);
+                    
+                    // In a real app, send audio stream to partner
+                    showMessage('Microphone enabled - Others can hear you');
+                    
+                    // Simulate partner hearing you
+                    setTimeout(() => {
+                        if (users.length > 1) {
+                            users.find(u => !u.isYou).isTalking = true;
+                            updateUserList();
+                        }
+                    }, 1000);
+                    
+                } else {
+                    // Turn off microphone
+                    if (localStream) {
+                        localStream.getTracks().forEach(track => track.stop());
+                        localStream = null;
+                    }
+                    
+                    microphoneEnabled = false;
+                    micControl.classList.add('muted');
+                    micStatusText.textContent = 'Microphone muted';
+                    audioVisualizer.style.display = 'none';
+                    
+                    // Stop talking indicator
+                    users.forEach(user => user.isTalking = false);
+                    updateUserList();
+                    
+                    showMessage('Microphone muted');
+                }
+                
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                showMessage('Could not access microphone. Check permissions.');
+            }
+        }
+        
+        // Setup audio visualizer
+        function setupAudioVisualizer(stream) {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            if (analyser) {
+                analyser.disconnect();
+            }
+            
+            const source = audioContext.createMediaStreamSource(stream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+            
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            function updateVisualizer() {
+                if (!microphoneEnabled) return;
+                
+                analyser.getByteFrequencyData(dataArray);
+                const bars = audioVisualizer.querySelectorAll('.audio-bar');
+                
+                bars.forEach((bar, index) => {
+                    const value = dataArray[index * 4] || 0;
+                    bar.style.height = `${20 + (value / 255 * 40)}px`;
+                    bar.style.background = `linear-gradient(to top, #00b4db, #0083b0)`;
+                });
+                
+                requestAnimationFrame(updateVisualizer);
+            }
+            
+            updateVisualizer();
+        }
+        
+        // Adjust volume
+        function adjustVolume(event) {
+            const rect = event.target.getBoundingClientRect();
+            const pos = (event.clientX - rect.left) / rect.width;
+            volume = Math.max(0.1, Math.min(1, pos));
+            volumeLevel.style.width = `${volume * 100}%`;
+            
+            // Adjust video volume
+            videoPlayer.volume = volume;
         }
         
         // Show create room screen
@@ -490,7 +801,6 @@
             createRoomScreen.style.display = 'flex';
             backButton.style.display = 'block';
             
-            // Generate and display room code
             const roomCode = generateRoomCode();
             generatedRoomCode.textContent = roomCode;
             currentRoom = roomCode;
@@ -511,11 +821,20 @@
             videoScreen.style.display = 'none';
             mainMenu.style.display = 'flex';
             backButton.style.display = 'none';
-            statusPanel.style.display = 'none';
+            voicePanel.style.display = 'none';
             connectionStatus.style.display = 'none';
             secretDot.style.display = 'none';
+            audioVisualizer.style.display = 'none';
+            
+            // Stop microphone if active
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
+            microphoneEnabled = false;
             currentRoom = null;
-            partnerConnected = false;
+            users = [{ id: 'you', name: 'You', isTalking: false, isYou: true }];
         }
         
         // Create room
@@ -545,9 +864,7 @@
             loadingText.textContent = 'Joining room...';
             loadingOverlay.style.display = 'flex';
             
-            // Simulate checking if room exists
             setTimeout(() => {
-                // For demo, we'll simulate that room always exists
                 loadingOverlay.style.display = 'none';
                 joinRoomScreen.style.display = 'none';
                 startRoom();
@@ -558,7 +875,7 @@
         function startRoom() {
             videoScreen.style.display = 'block';
             secretDot.style.display = 'block';
-            statusPanel.style.display = 'block';
+            voicePanel.style.display = 'block';
             backButton.style.display = 'block';
             
             // Set room code display
@@ -566,48 +883,63 @@
             
             // Start with first video
             videoPlayer.src = videos[currentVideoIndex].url;
+            videoPlayer.volume = volume;
             videoPlayer.play().catch(e => {
                 showMessage('Click video to start playback');
             });
             
+            // Initialize user list
+            updateUserList();
+            
             updateStatus(isHost ? 'Room created - Waiting for partner...' : 'Connecting to room...');
             
-            // Simulate partner connection (for demo)
+            // Simulate partner connection
             setTimeout(() => {
                 if (isHost) {
-                    showMessage('Share room code with your friend: ' + currentRoom);
+                    showMessage(`Room code: ${currentRoom} - Share with your friend`);
                     
-                    // Simulate partner joining after 3 seconds
+                    // Simulate partner joining
                     setTimeout(() => {
-                        partnerConnected = true;
-                        userCount.textContent = '2';
-                        updateStatus('Partner connected!', '#4CAF50');
-                        showMessage('Your friend joined the room!');
+                        users.push(partner);
+                        updateUserList();
+                        updateStatus('Friend connected! Voice chat ready', '#4CAF50');
+                        showMessage('Your friend joined! You can now talk to each other.');
                     }, 3000);
                 } else {
-                    partnerConnected = true;
-                    userCount.textContent = '2';
-                    updateStatus('Connected to room!', '#4CAF50');
-                    showMessage('Successfully joined the room!');
+                    users.push(partner);
+                    updateUserList();
+                    updateStatus('Connected to room! Voice chat ready', '#4CAF50');
+                    showMessage('Successfully joined! You can now talk to your friend.');
                 }
             }, 1000);
         }
         
         // Change video
         function changeVideo() {
-            if (!partnerConnected && isHost) {
-                showMessage('Waiting for partner to join...');
-                return;
-            }
-            
             currentVideoIndex = (currentVideoIndex + 1) % videos.length;
             videoPlayer.src = videos[currentVideoIndex].url;
             videoPlayer.play();
             
-            if (partnerConnected) {
-                showMessage(`Changed to ${videos[currentVideoIndex].name} - Partner also sees this`);
+            if (users.length > 1) {
+                showMessage(`Changed to ${videos[currentVideoIndex].name} - Friend also sees this`);
             } else {
                 showMessage(`Changed to ${videos[currentVideoIndex].name}`);
+            }
+        }
+        
+        // Simulate talking activity
+        function simulateTalking() {
+            if (users.length > 1) {
+                // Randomly toggle partner talking
+                const shouldTalk = Math.random() > 0.7;
+                users.find(u => !u.isYou).isTalking = shouldTalk;
+                updateUserList();
+                
+                // If you're talking, show indicator
+                if (microphoneEnabled) {
+                    users.find(u => u.isYou).isTalking = Math.random() > 0.5;
+                    updateUserList();
+                }
             }
         }
         
@@ -622,7 +954,12 @@
                 goBack();
             }
             
-            // Enter to join room
+            if (e.key === 'm' || e.key === 'M') {
+                if (videoScreen.style.display === 'block') {
+                    toggleMicrophone();
+                }
+            }
+            
             if (e.key === 'Enter' && joinRoomScreen.style.display === 'flex') {
                 joinRoom();
             }
@@ -634,6 +971,12 @@
                 videoPlayer.play();
             }
         });
+        
+        // Initialize volume display
+        volumeLevel.style.width = `${volume * 100}%`;
+        
+        // Start talking simulation
+        setInterval(simulateTalking, 2000);
         
         // Initialize
         updateStatus('Ready to connect', '#666');
