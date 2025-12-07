@@ -1,89 +1,141 @@
-// --- 1. Global Variables ---
-let localStream;
-let peerConnection;
-const log = document.getElementById('log');
-
-// --- 2. Configuration (Essential for WebRTC) ---
-// You MUST use a STUN server to help peers find each other's public IP address.
-const configuration = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' }
-    ]
-};
-
-// Function to print messages to the log box
-function writeLog(message) {
-    const p = document.createElement('p');
-    p.textContent = message;
-    log.appendChild(p);
-    log.scrollTop = log.scrollHeight; // Scroll to bottom
-}
-
-// --- 3. Start the process: Get Microphone Audio ---
-async function startCall() {
-    writeLog('Requesting microphone access...');
-    try {
-        // Get the local audio stream (WebRTC for "always-on" voice is enabled by default)
-        localStream = await navigator.mediaDevices.getUserMedia({ 
-            audio: true, 
-            video: false 
-        });
-
-        document.getElementById('localAudio').srcObject = localStream;
-        writeLog('✅ Microphone stream successfully acquired.');
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebRTC Self-Signaling Voice Chat Demo</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; background-color: #f8f8f8; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px; }
+        textarea { width: 90%; height: 100px; margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        audio { display: block; margin: 10px auto; }
+        .log { text-align: left; border: 1px solid #ddd; padding: 10px; height: 80px; overflow-y: scroll; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Manual Voice Chat Room Demo</h1>
+        <p>This demo requires **manual copy/paste** to replace the server.</p>
         
-        // --- Next Step: Establish Peer Connection ---
-        // In a real app, this is where you'd connect to your signaling server.
-        // For this example, we will just create the PC object.
-        createPeerConnection(); 
+        <button id="startBtn" onclick="startCall()">1. Start/Get Mic</button>
+        <button id="createOfferBtn" onclick="createOffer()" disabled>2. Create Offer (Creator)</button>
+        <button id="createAnswerBtn" onclick="createAnswer()" disabled>3. Create Answer (Joiner)</button>
+        
+        <hr>
 
-    } catch (error) {
-        writeLog(`❌ Error accessing microphone: ${error.name}`);
-        console.error('Error accessing media devices.', error);
-    }
-}
+        <h2>Signaling Data Exchange Area</h2>
+        
+        <p><strong>Offer/Answer SDP:</strong> Copy/Paste the text from the other person here.</p>
+        <textarea id="sdpData" placeholder="Paste Offer or Answer SDP here."></textarea>
+        <button onclick="processSdp()">Process SDP</button>
+        
+        <p><strong>ICE Candidate:</strong> Copy/Paste the text from the other person here.</p>
+        <textarea id="candidateData" placeholder="Paste ICE Candidate JSON here."></textarea>
+        <button onclick="processCandidate()">Process ICE</button>
+        
+        <hr>
 
-// --- 4. Create the Peer Connection Object ---
-function createPeerConnection() {
-    writeLog('Creating RTCPeerConnection...');
-    peerConnection = new RTCPeerConnection(configuration);
+        <h3>Connection Status</h3>
+        <p>Local Audio (Muted): <audio id="localAudio" autoplay muted></audio></p>
+        <p>Remote Audio: <audio id="remoteAudio" autoplay></audio></p>
+        <div class="log" id="log"></div>
+    </div>
 
-    // Add local tracks (audio) to the connection
-    localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, localStream);
-    });
+    <script>
+        let localStream;
+        let peerConnection;
+        const configuration = {
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        };
 
-    // Handle the remote stream being received
-    peerConnection.ontrack = (event) => {
-        writeLog('🔊 Remote stream track received!');
-        // Attach the remote audio stream to the friend's <audio> element
-        document.getElementById('remoteAudio').srcObject = event.streams[0];
-    };
-    
-    // --- Connection Events (The Signaling Steps) ---
-
-    // 1. Gathering ICE Candidates (Network information)
-    peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            // This event sends network info (candidate) to the other user via the server
-            // writeLog(`ICE Candidate: ${event.candidate.type}`);
-            // *** In a real app, you would send this to the server: ***
-            // signalingServer.send({ 'ice': event.candidate });
+        function writeLog(message) {
+            const logElement = document.getElementById('log');
+            logElement.innerHTML += `<p>${message}</p>`;
+            logElement.scrollTop = logElement.scrollHeight;
         }
-    };
-    
-    // 2. State changes
-    peerConnection.oniceconnectionstatechange = (event) => {
-        writeLog(`Connection State: ${peerConnection.iceConnectionState}`);
-    };
 
-    // *** In a real app, you would now create an Offer/Answer and exchange it via the server ***
-    writeLog('RTCPeerConnection ready. Waiting for friend to join (Signaling required!)...');
-    
-    // Example: Initiator creates an Offer (for demonstration, not functional without server)
-    // peerConnection.createOffer().then(offer => {
-    //     return peerConnection.setLocalDescription(offer);
-    // }).then(() => {
-    //     // Send peerConnection.localDescription to the other peer via the server
-    // });
-}
+        async function startCall() {
+            writeLog('Requesting microphone access...');
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                document.getElementById('localAudio').srcObject = localStream;
+                writeLog('✅ Microphone stream acquired. Now setting up connection.');
+                
+                // Create Peer Connection
+                peerConnection = new RTCPeerConnection(configuration);
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                // Event to handle the remote stream
+                peerConnection.ontrack = (event) => {
+                    writeLog('🔊 Remote stream received! Voice chat connected.');
+                    document.getElementById('remoteAudio').srcObject = event.streams[0];
+                };
+
+                // Event to generate ICE candidates (which you must manually copy)
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        writeLog(`ICE Candidate generated. Copy the JSON below and paste it into your friend's 'ICE Candidate' box:\n${JSON.stringify(event.candidate)}`);
+                    }
+                };
+                
+                // Enable the next steps
+                document.getElementById('createOfferBtn').disabled = false;
+                document.getElementById('createAnswerBtn').disabled = false;
+
+            } catch (error) {
+                writeLog(`❌ Error accessing microphone: ${error.name}`);
+                console.error('Error:', error);
+            }
+        }
+
+        // --- Creator's Step ---
+        async function createOffer() {
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            
+            writeLog(`Offer created. Copy the text below and paste it into your friend's 'Offer/Answer SDP' box:\n${peerConnection.localDescription.sdp}`);
+        }
+
+        // --- Joiner's Step ---
+        async function createAnswer() {
+             // This button only prepares the user to be a Joiner. They still need the Offer first.
+             writeLog("Ready to create Answer. First, paste the Offer from your friend and click 'Process SDP'.");
+        }
+
+        // --- Shared Processing Steps ---
+        async function processSdp() {
+            const sdpText = document.getElementById('sdpData').value;
+            if (!sdpText) return writeLog("Paste the SDP data first.");
+
+            const sessionDescription = new RTCSessionDescription({
+                type: peerConnection.localDescription ? 'answer' : 'offer',
+                sdp: sdpText
+            });
+
+            writeLog(`Processing received ${sessionDescription.type}.`);
+            await peerConnection.setRemoteDescription(sessionDescription);
+
+            if (sessionDescription.type === 'offer') {
+                // If it's an Offer, we must create an Answer and send it back
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                writeLog(`Answer created. Copy the text below and paste it into your friend's 'Offer/Answer SDP' box:\n${peerConnection.localDescription.sdp}`);
+            }
+        }
+
+        async function processCandidate() {
+            const candidateText = document.getElementById('candidateData').value;
+            if (!candidateText) return writeLog("Paste the Candidate JSON first.");
+            
+            try {
+                const candidate = JSON.parse(candidateText);
+                await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                writeLog('Received and added ICE Candidate.');
+            } catch (e) {
+                writeLog('❌ Error parsing Candidate JSON.');
+            }
+        }
+    </script>
+</body>
+</html>
