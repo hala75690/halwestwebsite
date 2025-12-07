@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blender Video Sync - Invite Friend</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background-color: #000;
+            height: 100vh;
+            width: 100vw;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        
+        /* Main video */
+        #fullscreenVideo {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* Menu screen */
+        .menu-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .menu-title {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #00b4db, #0083b0);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .menu-subtitle {
+            font-size: 1rem;
+            color: #aaa;
+            margin-bottom: 40px;
+            max-width: 400px;
+        }
+        
+        .main-button {
+            background: #00b4db;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            margin: 10px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .main-button:hover {
+            background: #0083b0;
+            transform: translateY(-2px);
+        }
+        
+        /* Share link section */
+        .share-section {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            max-width: 500px;
+            display: none;
+        }
+        
+        .share-title {
+            color: white;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .share-link-box {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .share-link {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+        
+        .copy-btn {
+            background: #00b4db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .share-options {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .share-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+        
+        .share-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Secret dot button */
+        .secret-dot {
+            position: fixed;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 10px;
+            height: 10px;
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 5;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: none;
+        }
+        
+        .secret-dot:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-50%) scale(1.3);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        
+        /* Status bar */
+        .status-bar {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            z-index: 5;
+            font-size: 0.9rem;
+            border-left: 4px solid #00b4db;
+            display: none;
+        }
+        
+        /* Partner info */
+        .partner-info {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 18px;
+            border-radius: 8px;
+            z-index: 5;
+            font-size: 0.9rem;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .partner-dot {
+            width: 8px;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            color: white;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: #00b4db;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        /* Message bubble */
+        .message-bubble {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            z-index: 5;
+            max-width: 300px;
+            text-align: center;
+            animation: messageFade 3s ease;
+            display: none;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes messageFade {
+            0% { opacity: 0; bottom: 60px; }
+            20% { opacity: 1; bottom: 80px; }
+            80% { opacity: 1; bottom: 80px; }
+            100% { opacity: 0; bottom: 60px; }
+        }
+        
+        .video-fade {
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <!-- Menu screen -->
+    <div class="menu-screen" id="menuScreen">
+        <h1 class="menu-title">Blender Video Sync</h1>
+        <p class="menu-subtitle">Watch Blender animations in perfect sync with one friend</p>
+        
+        <button class="main-button" id="createRoomBtn">
+            <span>🎥</span>
+            Create Room & Invite Friend
+        </button>
+        
+        <div class="share-section" id="shareSection">
+            <div class="share-title">Share this link with your friend:</div>
+            <div class="share-link-box">
+                <input type="text" class="share-link" id="shareLink" readonly value="Loading...">
+                <button class="copy-btn" id="copyBtn">Copy</button>
+            </div>
+            
+            <div class="share-options">
+                <button class="share-btn" id="whatsappBtn">
+                    <span>💬</span>
+                    WhatsApp
+                </button>
+                <button class="share-btn" id="emailBtn">
+                    <span>✉️</span>
+                    Email
+                </button>
+                <button class="share-btn" id="smsBtn">
+                    <span>📱</span>
+                    SMS
+                </button>
+            </div>
+            
+            <div style="margin-top: 20px; font-size: 0.9rem; color: #aaa;">
+                ⏱️ Link expires in 1 hour<br>
+                👥 Only 2 people allowed per room
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px; color: #aaa; font-size: 0.9rem;">
+            Already have a link? <a href="#" style="color: #00b4db; cursor: pointer;" id="haveLinkBtn">Click here</a>
+        </div>
+    </div>
+    
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div id="loadingText">Creating room...</div>
+    </div>
+    
+    <!-- Video element -->
+    <video id="fullscreenVideo" autoplay muted playsinline loop>
+        <!-- Video will be loaded dynamically -->
+    </video>
+    
+    <!-- Status bar -->
+    <div class="status-bar" id="statusBar">Disconnected</div>
+    
+    <!-- Partner info -->
+    <div class="partner-info" id="partnerInfo">
+        <div class="partner-dot"></div>
+        <span>Friend Connected</span>
+    </div>
+    
+    <!-- Secret dot button -->
+    <div class="secret-dot" id="secretDot"></div>
+    
+    <!-- Message bubble -->
+    <div class="message-bubble" id="messageBubble"></div>
+
+    <script>
+        // Video playlist - ADD YOUR VIDEOS HERE
+        const VIDEO_PLAYLIST = [
+            {
+                id: 0,
+                name: "Animation 1",
+                url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+            },
+            {
+                id: 1,
+                name: "Animation 2",
+                url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"
+            },
+            {
+                id: 2,
+                name: "Animation 3",
+                url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+            }
+        ];
+        
+        // DOM Elements
+        const menuScreen = document.getElementById('menuScreen');
+        const video = document.getElementById('fullscreenVideo');
+        const statusBar = document.getElementById('statusBar');
+        const partnerInfo = document.getElementById('partnerInfo');
+        const secretDot = document.getElementById('secretDot');
+        const messageBubble = document.getElementById('messageBubble');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const createRoomBtn = document.getElementById('createRoomBtn');
+        const shareSection = document.getElementById('shareSection');
+        const shareLink = document.getElementById('shareLink');
+        const copyBtn = document.getElementById('copyBtn');
+        const whatsappBtn = document.getElementById('whatsappBtn');
+        const emailBtn = document.getElementById('emailBtn');
+        const smsBtn = document.getElementById('smsBtn');
+        const haveLinkBtn = document.getElementById('haveLinkBtn');
+        
+        // State variables
+        let currentVideoIndex = 0;
+        let partnerConnected = false;
+        let roomCode = null;
+        let isHost = false;
+        
+        // Initialize with first video
+        video.src = VIDEO_PLAYLIST[0].url;
+        
+        // Show message bubble
+        function showMessage(text) {
+            messageBubble.textContent = text;
+            messageBubble.style.display = 'block';
+            setTimeout(() => {
+                messageBubble.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Update status
+        function updateStatus(text, color = '#00b4db') {
+            statusBar.textContent = text;
+            statusBar.style.borderLeftColor = color;
+            statusBar.style.display = 'block';
+        }
+        
+        // Generate room code
+        function generateRoomCode() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+        
+        // Generate shareable link
+        function generateShareLink() {
+            // In production, this would use your domain
+            const baseUrl = window.location.href.split('?')[0];
+            const roomCode = generateRoomCode();
+            return `${baseUrl}?room=${roomCode}&type=join`;
+        }
+        
+        // Check if user has a join link
+        function checkForJoinLink() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomParam = urlParams.get('room');
+            const typeParam = urlParams.get('type');
+            
+            if (roomParam && typeParam === 'join') {
+                // User is joining a room
+                isHost = false;
+                roomCode = roomParam;
+                
+                // Hide menu and show loading
+                menuScreen.style.display = 'none';
+                loadingOverlay.style.display = 'flex';
+                loadingText.textContent = 'Joining your friend...';
+                
+                // Simulate connecting
+                setTimeout(() => {
+                    startWatching();
+                    simulateFriendConnection();
+                }, 2000);
+                
+                return true;
+            }
+            return false;
+        }
+        
+        // Change video
+        function changeVideo(index) {
+            currentVideoIndex = index;
+            const videoData = VIDEO_PLAYLIST[index];
+            
+            // Show loading effect
+            video.classList.add('video-fade');
+            loadingOverlay.style.display = 'flex';
+            loadingText.textContent = 'Loading animation...';
+            
+            setTimeout(() => {
+                video.src = videoData.url;
+                video.load();
+                video.play().catch(console.error);
+                
+                // If partner is connected, sync with them (simulated)
+                if (partnerConnected) {
+                    showMessage(`Switched to ${videoData.name}`);
+                }
+                
+                // Hide loading
+                setTimeout(() => {
+                    video.classList.remove('video-fade');
+                    loadingOverlay.style.display = 'none';
+                }, 500);
+            }, 300);
+        }
+        
+        // Start watching (enter video mode)
+        function startWatching() {
+            menuScreen.style.display = 'none';
+            loadingOverlay.style.display = 'none';
+            secretDot.style.display = 'block';
+            statusBar.style.display = 'block';
+            updateStatus(isHost ? 'Waiting for friend...' : 'Connected to friend');
+            video.style.display = 'block';
+            
+            if (isHost) {
+                showMessage('Share the link with your friend!');
+            } else {
+                showMessage('Connected to your friend!');
+            }
+        }
+        
+        // Simulate friend connection (for demo)
+        function simulateFriendConnection() {
+            setTimeout(() => {
+                if (isHost) {
+                    // Host waits for friend
+                    loadingText.textContent = 'Friend is joining...';
+                    
+                    setTimeout(() => {
+                        partnerConnected = true;
+                        partnerInfo.style.display = 'flex';
+                        updateStatus('Friend Connected!', '#4CAF50');
+                        showMessage('Your friend joined! Videos are now synced.');
+                        loadingOverlay.style.display = 'none';
+                    }, 3000);
+                } else {
+                    // Joiner connects immediately
+                    partnerConnected = true;
+                    partnerInfo.style.display = 'flex';
+                    updateStatus('Connected to Friend', '#4CAF50');
+                    loadingOverlay.style.display = 'none';
+                }
+            }, 1000);
+        }
+        
+        // Create room button
+        createRoomBtn.addEventListener('click', () => {
+            isHost = true;
+            roomCode = generateRoomCode();
+            
+            // Generate share link
+            const link = generateShareLink();
+            shareLink.value = link;
+            
+            // Show share section
+            createRoomBtn.style.display = 'none';
+            shareSection.style.display = 'block';
+            
+            // Show loading
+            loadingOverlay.style.display = 'flex';
+            loadingText.textContent = 'Preparing room...';
+            
+            // After a moment, start watching
+            setTimeout(() => {
+                startWatching();
+                // Friend will join later (simulated)
+            }, 1500);
+        });
+        
+        // Copy link button
+        copyBtn.addEventListener('click', () => {
+            shareLink.select();
+            shareLink.setSelectionRange(0, 99999); // For mobile
+            document.execCommand('copy');
+            
+            // Show copied message
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = 'Copied!';
+            copyBtn.style.background = '#4CAF50';
+            showMessage('Link copied to clipboard!');
+            
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+                copyBtn.style.background = '#00b4db';
+            }, 2000);
+        });
+        
+        // Share via WhatsApp
+        whatsappBtn.addEventListener('click', () => {
+            const text = `Watch Blender animations with me! Click to join: ${shareLink.value}`;
+            const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+            window.open(whatsappUrl, '_blank');
+            showMessage('Opening WhatsApp...');
+        });
+        
+        // Share via Email
+        emailBtn.addEventListener('click', () => {
+            const subject = 'Watch Blender animations with me!';
+            const body = `Hey! Click this link to watch Blender animations together with me:\n\n${shareLink.value}\n\nSee you there!`;
+            const emailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = emailUrl;
+        });
+        
+        // Share via SMS
+        smsBtn.addEventListener('click', () => {
+            const text = `Watch Blender animations with me: ${shareLink.value}`;
+            const smsUrl = `sms:?body=${encodeURIComponent(text)}`;
+            window.location.href = smsUrl;
+        });
+        
+        // Already have a link
+        haveLinkBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const friendLink = prompt("Paste the link your friend sent you:");
+            if (friendLink && friendLink.includes('?room=')) {
+                // Extract room code from link
+                const url = new URL(friendLink);
+                const roomParam = url.searchParams.get('room');
+                
+                if (roomParam) {
+                    // Redirect to join the room
+                    window.location.href = `${window.location.origin}${window.location.pathname}?room=${roomParam}&type=join`;
+                }
+            } else if (friendLink) {
+                showMessage("That doesn't look like a valid link. Make sure your friend sent you the correct link.");
+            }
+        });
+        
+        // Secret dot button
+        secretDot.addEventListener('click', () => {
+            if (!partnerConnected) {
+                showMessage('Waiting for friend to connect...');
+                return;
+            }
+            
+            // Change to next video
+            const nextIndex = (currentVideoIndex + 1) % VIDEO_PLAYLIST.length;
+            changeVideo(nextIndex);
+            
+            // In a real app, this would sync with partner
+            if (partnerConnected) {
+                // Simulate partner also seeing the change
+                setTimeout(() => {
+                    showMessage('Your friend also sees the new animation');
+                }, 500);
+            }
+        });
+        
+        // Video event listeners
+        video.addEventListener('loadedmetadata', () => {
+            video.classList.remove('video-fade');
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ' && secretDot.style.display === 'block') {
+                e.preventDefault();
+                secretDot.click();
+            }
+            
+            if (e.key === 'Escape' && !menuScreen.style.display) {
+                // Return to menu
+                window.location.href = window.location.origin + window.location.pathname;
+            }
+        });
+        
+        // Check for join link on page load
+        window.addEventListener('load', () => {
+            if (!checkForJoinLink()) {
+                updateStatus('Ready to connect', '#666');
+            }
+        });
+        
+        // Initial status
+        updateStatus('Ready to connect', '#666');
+    </script>
+</body>
+</html>
