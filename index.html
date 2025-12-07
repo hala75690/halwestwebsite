@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blender Video Sync with Voice Chat</title>
+    <title>Blender Sync - Auto Voice Chat</title>
     <style>
         * {
             margin: 0;
@@ -190,8 +190,8 @@
             transform: translateY(-50%) scale(1.4);
         }
         
-        /* Voice Chat Panel */
-        .voice-panel {
+        /* Voice Status Panel */
+        .voice-status {
             position: fixed;
             top: 20px;
             right: 20px;
@@ -200,7 +200,7 @@
             padding: 20px;
             z-index: 10;
             display: none;
-            min-width: 250px;
+            min-width: 200px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -218,76 +218,12 @@
             font-family: monospace;
         }
         
-        /* Voice Controls */
-        .voice-controls {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-bottom: 20px;
+        /* Talking Indicators */
+        .talking-indicators {
+            margin: 15px 0;
         }
         
-        .mic-control {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .mic-control:hover {
-            background: rgba(255, 255, 255, 0.12);
-        }
-        
-        .mic-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(76, 175, 80, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-        }
-        
-        .mic-control.muted .mic-icon {
-            background: rgba(244, 67, 54, 0.2);
-        }
-        
-        .mic-status {
-            flex: 1;
-        }
-        
-        .mic-status div:first-child {
-            font-weight: 500;
-            margin-bottom: 3px;
-        }
-        
-        .mic-status div:last-child {
-            font-size: 0.85rem;
-            color: #aaa;
-        }
-        
-        .volume-slider {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            margin-top: 5px;
-            position: relative;
-        }
-        
-        .volume-level {
-            height: 100%;
-            width: 70%;
-            background: linear-gradient(to right, #00b4db, #0083b0);
-            border-radius: 3px;
-        }
-        
-        /* User List */
-        .users-title {
+        .talking-title {
             color: #aaa;
             font-size: 0.9rem;
             margin-bottom: 10px;
@@ -296,12 +232,7 @@
             gap: 8px;
         }
         
-        .user-list {
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        
-        .user-item {
+        .user-status {
             display: flex;
             align-items: center;
             gap: 12px;
@@ -312,14 +243,15 @@
         }
         
         .user-avatar {
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
+            font-size: 1.1rem;
         }
         
         .user-info {
@@ -328,23 +260,67 @@
         
         .user-name {
             font-weight: 500;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
         
-        .user-status {
+        .talking-signal {
             display: flex;
             align-items: center;
-            gap: 5px;
-            font-size: 0.8rem;
-            color: #aaa;
+            gap: 8px;
+            font-size: 0.85rem;
         }
         
-        .talking-indicator {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
+        .sound-waves {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .sound-wave {
+            width: 3px;
+            height: 15px;
             background: #4CAF50;
-            animation: pulse 1.5s infinite;
+            border-radius: 2px;
+            animation: soundWave 1.5s infinite ease-in-out;
+        }
+        
+        .sound-wave:nth-child(2) { animation-delay: 0.2s; }
+        .sound-wave:nth-child(3) { animation-delay: 0.4s; }
+        .sound-wave:nth-child(4) { animation-delay: 0.6s; }
+        .sound-wave:nth-child(5) { animation-delay: 0.8s; }
+        
+        .not-talking {
+            color: #666;
+            font-style: italic;
+        }
+        
+        /* Global Talking Indicator */
+        .global-talking-indicator {
+            position: fixed;
+            top: 50%;
+            right: 30px;
+            transform: translateY(-50%);
+            z-index: 5;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .big-sound-wave {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(76, 175, 80, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s infinite;
+            border: 2px solid rgba(76, 175, 80, 0.5);
+        }
+        
+        .big-sound-icon {
+            font-size: 1.8rem;
         }
         
         /* Connection Status */
@@ -424,25 +400,15 @@
             background: rgba(255, 255, 255, 0.2);
         }
         
-        /* Audio Visualization */
-        .audio-visualizer {
-            position: fixed;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            gap: 3px;
-            z-index: 10;
-            display: none;
-        }
-        
-        .audio-bar {
-            width: 4px;
-            height: 20px;
-            background: #00b4db;
-            border-radius: 2px;
-            transition: height 0.1s;
+        /* Volume Info */
+        .volume-info {
+            color: #aaa;
+            font-size: 0.85rem;
+            margin-top: 15px;
+            text-align: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
         }
         
         @keyframes spin {
@@ -461,9 +427,26 @@
             }
         }
         
+        @keyframes soundWave {
+            0%, 100% { 
+                height: 10px;
+                background: #4CAF50;
+            }
+            50% { 
+                height: 20px;
+                background: #8BC34A;
+            }
+        }
+        
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 0.7;
+            }
+            50% { 
+                transform: scale(1.1);
+                opacity: 1;
+            }
         }
     </style>
 </head>
@@ -471,14 +454,14 @@
     <!-- Main Menu Screen -->
     <div class="screen" id="mainMenu">
         <h1 class="title">🎬 Blender Sync</h1>
-        <p class="subtitle">Watch videos & voice chat with friends in real-time</p>
+        <p class="subtitle">Watch videos & voice chat automatically with friends</p>
         
         <div class="room-section">
             <div class="room-option" onclick="showCreateRoom()">
                 <div class="option-icon">🎥</div>
                 <div class="option-text">
                     <div class="option-title">Create Room</div>
-                    <div class="option-desc">Start a new session with voice chat</div>
+                    <div class="option-desc">Start a new session - voice chat auto-enabled</div>
                 </div>
             </div>
             
@@ -486,16 +469,21 @@
                 <div class="option-icon">🔗</div>
                 <div class="option-text">
                     <div class="option-title">Join Room</div>
-                    <div class="option-desc">Enter a room code to join your friend</div>
+                    <div class="option-desc">Enter a room code - voice chat auto-enabled</div>
                 </div>
             </div>
+        </div>
+        
+        <div style="color: #aaa; font-size: 0.9rem; max-width: 400px; margin-top: 20px;">
+            💬 <strong>Voice chat is always on</strong> - No buttons needed<br>
+            🔊 You'll see indicators when someone is talking
         </div>
     </div>
     
     <!-- Create Room Screen -->
     <div class="screen" id="createRoomScreen" style="display: none;">
         <h1 class="title">Create Room</h1>
-        <p class="subtitle">Create a private room with voice chat</p>
+        <p class="subtitle">Create a private room - Voice chat will auto-start</p>
         
         <div class="room-input-section" style="display: block;">
             <div class="input-label">Your room code will be generated automatically</div>
@@ -524,47 +512,65 @@
         <div class="secret-dot" id="secretDot" onclick="changeVideo()"></div>
     </div>
     
-    <!-- Voice Chat Panel -->
-    <div class="voice-panel" id="voicePanel">
+    <!-- Voice Status Panel -->
+    <div class="voice-status" id="voiceStatus">
         <div class="room-code-display" id="currentRoomCode">----</div>
         
-        <div class="voice-controls">
-            <div class="mic-control" id="micControl" onclick="toggleMicrophone()">
-                <div class="mic-icon">🎤</div>
-                <div class="mic-status">
-                    <div>Microphone</div>
-                    <div id="micStatusText">Click to enable</div>
+        <div class="talking-indicators">
+            <div class="talking-title">
+                <span>🎤</span>
+                <span>Voice Chat Status</span>
+            </div>
+            
+            <div class="user-status" id="youStatus">
+                <div class="user-avatar" id="youAvatar">Y</div>
+                <div class="user-info">
+                    <div class="user-name">You</div>
+                    <div class="talking-signal" id="youTalkingSignal">
+                        <div class="sound-waves" id="youSoundWaves">
+                            <div class="sound-wave"></div>
+                            <div class="sound-wave"></div>
+                            <div class="sound-wave"></div>
+                            <div class="sound-wave"></div>
+                            <div class="sound-wave"></div>
+                        </div>
+                        <span id="youTalkingText">Not talking</span>
+                    </div>
                 </div>
             </div>
             
-            <div>
-                <div style="margin-bottom: 5px; color: #aaa; font-size: 0.9rem;">Volume</div>
-                <div class="volume-slider" onclick="adjustVolume(event)">
-                    <div class="volume-level" id="volumeLevel"></div>
+            <div class="user-status" id="friendStatus">
+                <div class="user-avatar" id="friendAvatar">F</div>
+                <div class="user-info">
+                    <div class="user-name">Friend</div>
+                    <div class="talking-signal" id="friendTalkingSignal">
+                        <div class="sound-waves" id="friendSoundWaves">
+                            <div class="sound-wave"></div>
+                            <div class="sound-wave"></div>
+                            <div class="sound-wave"></div>
+                            <div class="sound-wave"></div>
+                            <div class="sound-wave"></div>
+                        </div>
+                        <span id="friendTalkingText">Not connected</span>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="users-title">
-            <span>👥</span>
-            <span>Users in Room (<span id="userCount">1</span>)</span>
-        </div>
-        
-        <div class="user-list" id="userList">
-            <!-- Users will be added here -->
+        <div class="volume-info">
+            🔊 Voice chat is <strong>always active</strong><br>
+            💬 Just talk normally - indicators will show
         </div>
     </div>
     
-    <!-- Audio Visualizer -->
-    <div class="audio-visualizer" id="audioVisualizer">
-        <div class="audio-bar"></div>
-        <div class="audio-bar"></div>
-        <div class="audio-bar"></div>
-        <div class="audio-bar"></div>
-        <div class="audio-bar"></div>
-        <div class="audio-bar"></div>
-        <div class="audio-bar"></div>
-        <div class="audio-bar"></div>
+    <!-- Global Talking Indicator -->
+    <div class="global-talking-indicator" id="globalTalkingIndicator">
+        <div class="big-sound-wave">
+            <div class="big-sound-icon">🎤</div>
+        </div>
+        <div style="background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 10px; font-size: 0.8rem;">
+            Someone is talking
+        </div>
     </div>
     
     <!-- Connection Status -->
@@ -578,7 +584,7 @@
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
-        <div id="loadingText">Creating room...</div>
+        <div id="loadingText">Setting up voice chat...</div>
     </div>
     
     <!-- Message Toast -->
@@ -589,24 +595,16 @@
         let currentRoom = null;
         let isHost = false;
         let currentVideoIndex = 0;
-        let microphoneEnabled = false;
         let localStream = null;
         let audioContext = null;
         let analyser = null;
-        let volume = 0.7;
+        let isTalking = false;
+        let friendIsTalking = false;
+        let friendConnected = false;
         
-        // User data
-        let users = [
-            { id: 'you', name: 'You', isTalking: false, isYou: true }
-        ];
-        
-        // Simulated partner (for demo)
-        let partner = { 
-            id: 'partner', 
-            name: 'Friend', 
-            isTalking: false, 
-            isYou: false 
-        };
+        // Audio detection
+        let talkingThreshold = 20; // Volume threshold for detecting speech
+        let silenceTimer = null;
         
         // DOM Elements
         const mainMenu = document.getElementById('mainMenu');
@@ -615,7 +613,7 @@
         const videoScreen = document.getElementById('videoScreen');
         const videoPlayer = document.getElementById('videoPlayer');
         const secretDot = document.getElementById('secretDot');
-        const voicePanel = document.getElementById('voicePanel');
+        const voiceStatus = document.getElementById('voiceStatus');
         const connectionStatus = document.getElementById('connectionStatus');
         const backButton = document.getElementById('backButton');
         const loadingOverlay = document.getElementById('loadingOverlay');
@@ -624,13 +622,16 @@
         const generatedRoomCode = document.getElementById('generatedRoomCode');
         const joinCodeInput = document.getElementById('joinCodeInput');
         const currentRoomCode = document.getElementById('currentRoomCode');
-        const userCount = document.getElementById('userCount');
-        const userList = document.getElementById('userList');
         const statusText = document.getElementById('statusText');
-        const micControl = document.getElementById('micControl');
-        const micStatusText = document.getElementById('micStatusText');
-        const volumeLevel = document.getElementById('volumeLevel');
-        const audioVisualizer = document.getElementById('audioVisualizer');
+        const youTalkingSignal = document.getElementById('youTalkingSignal');
+        const youTalkingText = document.getElementById('youTalkingText');
+        const youSoundWaves = document.getElementById('youSoundWaves');
+        const friendTalkingSignal = document.getElementById('friendTalkingSignal');
+        const friendTalkingText = document.getElementById('friendTalkingText');
+        const friendSoundWaves = document.getElementById('friendSoundWaves');
+        const globalTalkingIndicator = document.getElementById('globalTalkingIndicator');
+        const youAvatar = document.getElementById('youAvatar');
+        const friendAvatar = document.getElementById('friendAvatar');
         
         // Video Playlist - CHANGE THESE TO YOUR VIDEOS
         const videos = [
@@ -674,125 +675,136 @@
             return code;
         }
         
-        // Update user list display
-        function updateUserList() {
-            userList.innerHTML = '';
-            users.forEach(user => {
-                const userDiv = document.createElement('div');
-                userDiv.className = 'user-item';
-                userDiv.innerHTML = `
-                    <div class="user-avatar">${user.name.charAt(0)}</div>
-                    <div class="user-info">
-                        <div class="user-name">${user.name}${user.isYou ? ' (You)' : ''}</div>
-                        <div class="user-status">
-                            ${user.isTalking ? '<div class="talking-indicator"></div><span>Talking now</span>' : '<span>Silent</span>'}
-                        </div>
-                    </div>
-                `;
-                userList.appendChild(userDiv);
-            });
-            userCount.textContent = users.length;
+        // Update talking indicators
+        function updateTalkingIndicators() {
+            // Update "You" indicator
+            if (isTalking) {
+                youSoundWaves.style.display = 'flex';
+                youTalkingText.textContent = 'Talking now';
+                youTalkingText.style.color = '#4CAF50';
+            } else {
+                youSoundWaves.style.display = 'none';
+                youTalkingText.textContent = 'Not talking';
+                youTalkingText.style.color = '#666';
+            }
+            
+            // Update "Friend" indicator
+            if (!friendConnected) {
+                friendSoundWaves.style.display = 'none';
+                friendTalkingText.textContent = 'Not connected';
+                friendTalkingText.style.color = '#666';
+            } else if (friendIsTalking) {
+                friendSoundWaves.style.display = 'flex';
+                friendTalkingText.textContent = 'Talking now';
+                friendTalkingText.style.color = '#4CAF50';
+            } else {
+                friendSoundWaves.style.display = 'none';
+                friendTalkingText.textContent = 'Not talking';
+                friendTalkingText.style.color = '#666';
+            }
+            
+            // Update global indicator
+            if (friendIsTalking) {
+                globalTalkingIndicator.style.display = 'flex';
+            } else {
+                globalTalkingIndicator.style.display = 'none';
+            }
         }
         
-        // Toggle microphone
-        async function toggleMicrophone() {
+        // Auto-enable microphone
+        async function enableAutoVoiceChat() {
             try {
-                if (!microphoneEnabled) {
-                    // Request microphone access
-                    localStream = await navigator.mediaDevices.getUserMedia({
-                        audio: true,
-                        video: false
-                    });
-                    
-                    microphoneEnabled = true;
-                    micControl.classList.remove('muted');
-                    micStatusText.textContent = 'Microphone active';
-                    
-                    // Show audio visualizer
-                    audioVisualizer.style.display = 'flex';
-                    setupAudioVisualizer(localStream);
-                    
-                    // In a real app, send audio stream to partner
-                    showMessage('Microphone enabled - Others can hear you');
-                    
-                    // Simulate partner hearing you
-                    setTimeout(() => {
-                        if (users.length > 1) {
-                            users.find(u => !u.isYou).isTalking = true;
-                            updateUserList();
-                        }
-                    }, 1000);
-                    
-                } else {
-                    // Turn off microphone
-                    if (localStream) {
-                        localStream.getTracks().forEach(track => track.stop());
-                        localStream = null;
-                    }
-                    
-                    microphoneEnabled = false;
-                    micControl.classList.add('muted');
-                    micStatusText.textContent = 'Microphone muted';
-                    audioVisualizer.style.display = 'none';
-                    
-                    // Stop talking indicator
-                    users.forEach(user => user.isTalking = false);
-                    updateUserList();
-                    
-                    showMessage('Microphone muted');
-                }
+                // Request microphone access automatically
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    },
+                    video: false
+                });
+                
+                // Setup audio analysis
+                setupAudioAnalysis(localStream);
+                
+                showMessage('Voice chat enabled - Just start talking!');
+                updateStatus('Voice chat active', '#4CAF50');
                 
             } catch (error) {
                 console.error('Error accessing microphone:', error);
-                showMessage('Could not access microphone. Check permissions.');
+                showMessage('Could not access microphone. You can still watch videos.');
+                updateStatus('Voice chat unavailable', '#f44336');
             }
         }
         
-        // Setup audio visualizer
-        function setupAudioVisualizer(stream) {
+        // Setup audio analysis to detect talking
+        function setupAudioAnalysis(stream) {
             if (!audioContext) {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            
-            if (analyser) {
-                analyser.disconnect();
             }
             
             const source = audioContext.createMediaStreamSource(stream);
             analyser = audioContext.createAnalyser();
             analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.8;
             source.connect(analyser);
             
             const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
             
-            function updateVisualizer() {
-                if (!microphoneEnabled) return;
+            function detectTalking() {
+                if (!analyser) return;
                 
                 analyser.getByteFrequencyData(dataArray);
-                const bars = audioVisualizer.querySelectorAll('.audio-bar');
                 
-                bars.forEach((bar, index) => {
-                    const value = dataArray[index * 4] || 0;
-                    bar.style.height = `${20 + (value / 255 * 40)}px`;
-                    bar.style.background = `linear-gradient(to top, #00b4db, #0083b0)`;
-                });
+                // Calculate average volume
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                }
+                const averageVolume = sum / bufferLength;
                 
-                requestAnimationFrame(updateVisualizer);
+                // Detect if user is talking
+                const wasTalking = isTalking;
+                isTalking = averageVolume > talkingThreshold;
+                
+                // Update indicators if state changed
+                if (isTalking !== wasTalking) {
+                    updateTalkingIndicators();
+                    
+                    // In a real app, send talking status to partner
+                    if (friendConnected) {
+                        // Simulate partner hearing you
+                        setTimeout(() => {
+                            if (isTalking) {
+                                friendIsTalking = true;
+                                updateTalkingIndicators();
+                                
+                                // Simulate partner responding
+                                setTimeout(() => {
+                                    if (Math.random() > 0.5) {
+                                        friendIsTalking = true;
+                                        updateTalkingIndicators();
+                                    }
+                                }, 500);
+                            }
+                        }, 100);
+                    }
+                }
+                
+                // If user was talking but now silent, start timer
+                if (wasTalking && !isTalking) {
+                    clearTimeout(silenceTimer);
+                    silenceTimer = setTimeout(() => {
+                        friendIsTalking = false;
+                        updateTalkingIndicators();
+                    }, 1500); // 1.5 seconds of silence
+                }
+                
+                requestAnimationFrame(detectTalking);
             }
             
-            updateVisualizer();
-        }
-        
-        // Adjust volume
-        function adjustVolume(event) {
-            const rect = event.target.getBoundingClientRect();
-            const pos = (event.clientX - rect.left) / rect.width;
-            volume = Math.max(0.1, Math.min(1, pos));
-            volumeLevel.style.width = `${volume * 100}%`;
-            
-            // Adjust video volume
-            videoPlayer.volume = volume;
+            detectTalking();
         }
         
         // Show create room screen
@@ -821,10 +833,10 @@
             videoScreen.style.display = 'none';
             mainMenu.style.display = 'flex';
             backButton.style.display = 'none';
-            voicePanel.style.display = 'none';
+            voiceStatus.style.display = 'none';
             connectionStatus.style.display = 'none';
             secretDot.style.display = 'none';
-            audioVisualizer.style.display = 'none';
+            globalTalkingIndicator.style.display = 'none';
             
             // Stop microphone if active
             if (localStream) {
@@ -832,16 +844,27 @@
                 localStream = null;
             }
             
-            microphoneEnabled = false;
+            // Clean up audio context
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            analyser = null;
+            isTalking = false;
+            friendIsTalking = false;
+            friendConnected = false;
             currentRoom = null;
-            users = [{ id: 'you', name: 'You', isTalking: false, isYou: true }];
         }
         
         // Create room
-        function createRoom() {
+        async function createRoom() {
             isHost = true;
-            loadingText.textContent = 'Creating room...';
+            loadingText.textContent = 'Enabling voice chat...';
             loadingOverlay.style.display = 'flex';
+            
+            // Auto-enable voice chat
+            await enableAutoVoiceChat();
             
             setTimeout(() => {
                 loadingOverlay.style.display = 'none';
@@ -851,7 +874,7 @@
         }
         
         // Join room
-        function joinRoom() {
+        async function joinRoom() {
             const code = joinCodeInput.value.trim().toUpperCase();
             
             if (code.length !== 4) {
@@ -861,8 +884,11 @@
             
             isHost = false;
             currentRoom = code;
-            loadingText.textContent = 'Joining room...';
+            loadingText.textContent = 'Enabling voice chat...';
             loadingOverlay.style.display = 'flex';
+            
+            // Auto-enable voice chat
+            await enableAutoVoiceChat();
             
             setTimeout(() => {
                 loadingOverlay.style.display = 'none';
@@ -875,41 +901,45 @@
         function startRoom() {
             videoScreen.style.display = 'block';
             secretDot.style.display = 'block';
-            voicePanel.style.display = 'block';
+            voiceStatus.style.display = 'block';
             backButton.style.display = 'block';
             
             // Set room code display
             currentRoomCode.textContent = currentRoom;
             
+            // Set random avatar colors
+            youAvatar.style.background = getRandomGradient();
+            friendAvatar.style.background = getRandomGradient();
+            friendAvatar.textContent = getRandomInitial();
+            
             // Start with first video
             videoPlayer.src = videos[currentVideoIndex].url;
-            videoPlayer.volume = volume;
             videoPlayer.play().catch(e => {
                 showMessage('Click video to start playback');
             });
             
-            // Initialize user list
-            updateUserList();
+            // Initialize talking indicators
+            updateTalkingIndicators();
             
-            updateStatus(isHost ? 'Room created - Waiting for partner...' : 'Connecting to room...');
+            updateStatus(isHost ? 'Room created - Voice chat ready' : 'Connecting to room...');
             
-            // Simulate partner connection
+            // Simulate friend connection
             setTimeout(() => {
                 if (isHost) {
                     showMessage(`Room code: ${currentRoom} - Share with your friend`);
                     
-                    // Simulate partner joining
+                    // Simulate friend joining
                     setTimeout(() => {
-                        users.push(partner);
-                        updateUserList();
-                        updateStatus('Friend connected! Voice chat ready', '#4CAF50');
-                        showMessage('Your friend joined! You can now talk to each other.');
+                        friendConnected = true;
+                        updateTalkingIndicators();
+                        updateStatus('Friend connected! Voice chat active', '#4CAF50');
+                        showMessage('Your friend joined! You can talk to each other now.');
                     }, 3000);
                 } else {
-                    users.push(partner);
-                    updateUserList();
-                    updateStatus('Connected to room! Voice chat ready', '#4CAF50');
-                    showMessage('Successfully joined! You can now talk to your friend.');
+                    friendConnected = true;
+                    updateTalkingIndicators();
+                    updateStatus('Connected! Voice chat active', '#4CAF50');
+                    showMessage('Connected to friend! You can talk to each other now.');
                 }
             }, 1000);
         }
@@ -920,26 +950,42 @@
             videoPlayer.src = videos[currentVideoIndex].url;
             videoPlayer.play();
             
-            if (users.length > 1) {
+            if (friendConnected) {
                 showMessage(`Changed to ${videos[currentVideoIndex].name} - Friend also sees this`);
             } else {
                 showMessage(`Changed to ${videos[currentVideoIndex].name}`);
             }
         }
         
-        // Simulate talking activity
-        function simulateTalking() {
-            if (users.length > 1) {
-                // Randomly toggle partner talking
-                const shouldTalk = Math.random() > 0.7;
-                users.find(u => !u.isYou).isTalking = shouldTalk;
-                updateUserList();
+        // Get random gradient for avatar
+        function getRandomGradient() {
+            const gradients = [
+                'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+                'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
+            ];
+            return gradients[Math.floor(Math.random() * gradients.length)];
+        }
+        
+        // Get random initial for friend
+        function getRandomInitial() {
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            return letters.charAt(Math.floor(Math.random() * letters.length));
+        }
+        
+        // Simulate friend talking (for demo)
+        function simulateFriendTalking() {
+            if (friendConnected && Math.random() > 0.7) {
+                friendIsTalking = true;
+                updateTalkingIndicators();
                 
-                // If you're talking, show indicator
-                if (microphoneEnabled) {
-                    users.find(u => u.isYou).isTalking = Math.random() > 0.5;
-                    updateUserList();
-                }
+                // Stop talking after random time
+                setTimeout(() => {
+                    friendIsTalking = false;
+                    updateTalkingIndicators();
+                }, Math.random() * 3000 + 1000);
             }
         }
         
@@ -954,12 +1000,6 @@
                 goBack();
             }
             
-            if (e.key === 'm' || e.key === 'M') {
-                if (videoScreen.style.display === 'block') {
-                    toggleMicrophone();
-                }
-            }
-            
             if (e.key === 'Enter' && joinRoomScreen.style.display === 'flex') {
                 joinRoom();
             }
@@ -972,11 +1012,8 @@
             }
         });
         
-        // Initialize volume display
-        volumeLevel.style.width = `${volume * 100}%`;
-        
-        // Start talking simulation
-        setInterval(simulateTalking, 2000);
+        // Start friend talking simulation
+        setInterval(simulateFriendTalking, 4000);
         
         // Initialize
         updateStatus('Ready to connect', '#666');
